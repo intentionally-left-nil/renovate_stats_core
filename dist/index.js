@@ -31871,6 +31871,66 @@ exports["default"] = getClient;
 
 /***/ }),
 
+/***/ 2150:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const client_1 = __importDefault(__nccwpck_require__(4970));
+const github = __importStar(__nccwpck_require__(5438));
+const core = __importStar(__nccwpck_require__(2186));
+async function getRenovateIssue() {
+    const client = (0, client_1.default)();
+    const { owner, repo } = github.context.repo;
+    core.debug(`Getting issues for ${owner}/${repo}`);
+    const issues = await client.issues.listForRepo({
+        owner,
+        repo,
+        state: 'open'
+    });
+    core.debug(`Found ${issues.data.length} issues`);
+    const issue = issues.data.find(i => i.title === 'Dependency Dashboard');
+    if (!issue) {
+        core.warning('No Renovate Dashboard issue found');
+    }
+    return issue;
+}
+async function getIssueTrackerStats() {
+    const issue = await getRenovateIssue();
+    return issue?.body ?? 'No Renovate issue found';
+}
+exports["default"] = getIssueTrackerStats;
+
+
+/***/ }),
+
 /***/ 399:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -31906,10 +31966,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const pulls_1 = __importDefault(__nccwpck_require__(6538));
+const issue_tracker_1 = __importDefault(__nccwpck_require__(2150));
 async function run() {
     try {
         const prs = await (0, pulls_1.default)();
-        core.setOutput('all', JSON.stringify(prs));
+        const issueStats = await (0, issue_tracker_1.default)();
+        core.setOutput('all', JSON.stringify({ prs, issueStats }));
     }
     catch (error) {
         // Fail the workflow run if an error occurs
