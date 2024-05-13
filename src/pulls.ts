@@ -19,7 +19,7 @@ export type PullStat = {
 
 async function getPRs(): Promise<PullRequests> {
   let createdAfter: Date | undefined;
-  const createdAfterInput: string = core.getInput('createdAfter') ?? '';
+  const createdAfterInput: string = core.getInput('created_after') ?? '';
   if (createdAfterInput) {
     createdAfter = new Date(createdAfterInput);
   }
@@ -57,7 +57,7 @@ async function getApprovers(pull: PullRequest): Promise<string[]> {
   return approvers;
 }
 
-export default async function pullStats(): Promise<PullStat[]> {
+export default async function getPullStats(): Promise<PullStat[]> {
   const prs = await getPRs();
   const stats: PullStat[] = [];
   for (const pr of prs) {

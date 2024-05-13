@@ -31828,19 +31828,40 @@ function wrappy (fn, cb) {
 /***/ }),
 
 /***/ 4970:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const rest_1 = __nccwpck_require__(5375);
+const core = __importStar(__nccwpck_require__(2186));
 let octokit = null;
 function getClient() {
     if (octokit == null) {
-        const token = process.env.GITHUB_TOKEN ?? '';
-        if (!token) {
-            throw new Error('GITHUB_TOKEN is not set');
-        }
+        const token = core.getInput('github_token');
         octokit = new rest_1.Octokit({ auth: token });
     }
     return octokit;
@@ -31884,24 +31905,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const wait_1 = __nccwpck_require__(5259);
 const pulls_1 = __importDefault(__nccwpck_require__(6538));
-/**
- * The main function for the action.
- * @returns {Promise<void>} Resolves when the action is complete.
- */
 async function run() {
     try {
-        const ms = core.getInput('milliseconds');
-        // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-        core.debug(`Waiting ${ms} milliseconds ...`);
-        core.debug('Hello, world!');
-        // Log the current timestamp, wait, then log the new timestamp
-        core.debug(new Date().toTimeString());
-        await (0, wait_1.wait)(parseInt(ms, 10));
-        core.debug(new Date().toTimeString());
-        // Set outputs for other workflow steps to use
-        core.setOutput('time', new Date().toTimeString());
         const prs = await (0, pulls_1.default)();
         core.setOutput('all', JSON.stringify(prs));
     }
@@ -31953,7 +31959,7 @@ const github = __importStar(__nccwpck_require__(5438));
 const client_1 = __importDefault(__nccwpck_require__(4970));
 async function getPRs() {
     let createdAfter;
-    const createdAfterInput = core.getInput('createdAfter') ?? '';
+    const createdAfterInput = core.getInput('created_after') ?? '';
     if (createdAfterInput) {
         createdAfter = new Date(createdAfterInput);
     }
@@ -31985,7 +31991,7 @@ async function getApprovers(pull) {
         .filter(Boolean);
     return approvers;
 }
-async function pullStats() {
+async function getPullStats() {
     const prs = await getPRs();
     const stats = [];
     for (const pr of prs) {
@@ -32006,32 +32012,7 @@ async function pullStats() {
     }
     return stats;
 }
-exports["default"] = pullStats;
-
-
-/***/ }),
-
-/***/ 5259:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.wait = void 0;
-/**
- * Wait for a number of milliseconds.
- * @param milliseconds The number of milliseconds to wait.
- * @returns {Promise<string>} Resolves with 'done!' after the wait is over.
- */
-async function wait(milliseconds) {
-    return new Promise(resolve => {
-        if (isNaN(milliseconds)) {
-            throw new Error('milliseconds not a number');
-        }
-        setTimeout(() => resolve('done!'), milliseconds);
-    });
-}
-exports.wait = wait;
+exports["default"] = getPullStats;
 
 
 /***/ }),

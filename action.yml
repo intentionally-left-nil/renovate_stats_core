@@ -9,21 +9,18 @@ branding:
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  github_token:
+    description: 'GitHub token, required to access the GitHub API'
     required: true
-    default: '1000'
-  createdAfter:
+  created_after:
     description: 'Only consider PRs created after this date'
     required: false
     default: ''
 
 # Define your outputs here.
 outputs:
-  time:
-    description: 'Your output description here'
   all:
-    description: 'Full output for the repository'
+    description: 'All the raw data, useful for performing your own analysis'
 
 runs:
   using: node20
