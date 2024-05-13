@@ -31827,6 +31827,29 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 4970:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const rest_1 = __nccwpck_require__(5375);
+let octokit = null;
+function getClient() {
+    if (octokit == null) {
+        const token = process.env.GITHUB_TOKEN ?? '';
+        if (!token) {
+            throw new Error('GITHUB_TOKEN is not set');
+        }
+        octokit = new rest_1.Octokit({ auth: token });
+    }
+    return octokit;
+}
+exports["default"] = getClient;
+
+
+/***/ }),
+
 /***/ 399:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -31855,33 +31878,14 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const github = __importStar(__nccwpck_require__(5438));
 const wait_1 = __nccwpck_require__(5259);
-const rest_1 = __nccwpck_require__(5375);
-async function getPRs() {
-    let createdAfter;
-    const createdAfterInput = core.getInput('createdAfter') ?? '';
-    if (createdAfterInput) {
-        createdAfter = new Date(createdAfterInput);
-    }
-    const token = process.env.GITHUB_TOKEN ?? '';
-    const octokit = new rest_1.Octokit({ auth: token });
-    const { owner, repo } = github.context.repo;
-    core.debug(`token len: ${token.length} owner: ${owner}, repo: ${repo}`);
-    let pulls = await octokit.paginate(octokit.pulls.list, {
-        owner,
-        repo,
-        base: 'main'
-    });
-    pulls = pulls.filter(pull => pull.labels.some(label => label.name === 'renovate'));
-    if (createdAfter) {
-        pulls = pulls.filter(pull => new Date(pull.created_at) > createdAfter);
-    }
-    return pulls;
-}
+const pulls_1 = __importDefault(__nccwpck_require__(6538));
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -31898,7 +31902,7 @@ async function run() {
         core.debug(new Date().toTimeString());
         // Set outputs for other workflow steps to use
         core.setOutput('time', new Date().toTimeString());
-        const prs = await getPRs();
+        const prs = await (0, pulls_1.default)();
         core.setOutput('all', JSON.stringify(prs));
     }
     catch (error) {
@@ -31908,6 +31912,101 @@ async function run() {
     }
 }
 exports.run = run;
+
+
+/***/ }),
+
+/***/ 6538:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const core = __importStar(__nccwpck_require__(2186));
+const github = __importStar(__nccwpck_require__(5438));
+const client_1 = __importDefault(__nccwpck_require__(4970));
+async function getPRs() {
+    let createdAfter;
+    const createdAfterInput = core.getInput('createdAfter') ?? '';
+    if (createdAfterInput) {
+        createdAfter = new Date(createdAfterInput);
+    }
+    const client = (0, client_1.default)();
+    const { owner, repo } = github.context.repo;
+    let pulls = await client.paginate(client.pulls.list, {
+        owner,
+        repo,
+        state: 'all',
+        base: 'main'
+    });
+    pulls = pulls.filter(pull => pull.labels.some(label => label.name === 'renovate'));
+    if (createdAfter) {
+        pulls = pulls.filter(pull => new Date(pull.created_at) > createdAfter);
+    }
+    return pulls;
+}
+async function getApprovers(pull) {
+    const client = (0, client_1.default)();
+    const { owner, repo } = github.context.repo;
+    const reviews = await client.pulls.listReviews({
+        owner,
+        repo,
+        pull_number: pull.number
+    });
+    const approvers = reviews.data
+        .filter(review => review.state === 'APPROVED')
+        .map(review => review.user?.login ?? '')
+        .filter(Boolean);
+    return approvers;
+}
+async function pullStats() {
+    const prs = await getPRs();
+    const stats = [];
+    for (const pr of prs) {
+        const approvers = await getApprovers(pr);
+        const createdAt = new Date(pr.created_at);
+        const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
+        const openFor = (mergedAt ?? new Date()).getTime() - createdAt.getTime();
+        stats.push({
+            id: pr.number,
+            title: pr.title,
+            approvers,
+            createdAt,
+            mergedAt,
+            openFor,
+            isOpen: pr.state === 'open',
+            isMerged: pr.merged_at !== null
+        });
+    }
+    return stats;
+}
+exports["default"] = pullStats;
 
 
 /***/ }),
