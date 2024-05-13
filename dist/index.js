@@ -31925,7 +31925,7 @@ async function getRenovateIssue() {
 async function parseRenovateIssue(markdown) {
     const { remark } = await Promise.all(/* import() */[__nccwpck_require__.e(547), __nccwpck_require__.e(593)]).then(__nccwpck_require__.bind(__nccwpck_require__, 5593));
     const { default: remarkParse } = await Promise.all(/* import() */[__nccwpck_require__.e(547), __nccwpck_require__.e(274)]).then(__nccwpck_require__.bind(__nccwpck_require__, 1274));
-    const parsed = remark.use(remarkParse).parse(markdown);
+    const parsed = remark().use(remarkParse).parse(markdown);
     return parsed;
 }
 async function getIssueTrackerStats() {

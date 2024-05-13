@@ -25,7 +25,7 @@ async function getRenovateIssue(): Promise<Issue | undefined> {
 async function parseRenovateIssue(markdown: string): Promise<unknown> {
   const { remark } = await import('remark');
   const { default: remarkParse } = await import('remark-parse');
-  const parsed = remark.use(remarkParse).parse(markdown);
+  const parsed = remark().use(remarkParse).parse(markdown);
   return parsed;
 }
 
