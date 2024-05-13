@@ -16,6 +16,7 @@ async function getPRs(): Promise<PullRequests> {
   const token: string = process.env.GITHUB_TOKEN ?? '';
   const octokit = new Octokit({ auth: token });
   const { owner, repo } = github.context.repo;
+  core.debug(`token len: ${token.length} owner: ${owner}, repo: ${repo}`);
   let pulls = await octokit.paginate(octokit.pulls.list, {
     owner,
     repo,
