@@ -13,11 +13,17 @@ inputs:
     description: 'Your input description here'
     required: true
     default: '1000'
+  createdAfter:
+    description: 'Only consider PRs created after this date'
+    required: false
+    default: ''
 
 # Define your outputs here.
 outputs:
   time:
     description: 'Your output description here'
+  all:
+    description: 'Full output for the repository'
 
 runs:
   using: node20
