@@ -72,12 +72,16 @@ function getTextContent(node: RootContent): string {
 }
 
 function getListItems(list: List): string[] {
+  const linesToIgnore = [
+    'Check this box to trigger a request for Renovate to run again on this repository'
+  ];
   return list.children
     .map(child => {
       const paragraph = findCheckboxParent(child);
       return paragraph ? getTextContent(paragraph) : '';
     })
-    .map(s => s.replace(/^\[ \] /, ''))
+    .map(s => s.replace(/^\[ \] /, '').trim())
+    .filter(s => !linesToIgnore.includes(s))
     .filter(Boolean);
 }
 

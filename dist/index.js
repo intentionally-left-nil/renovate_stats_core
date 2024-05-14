@@ -31960,12 +31960,16 @@ function getTextContent(node) {
     }
 }
 function getListItems(list) {
+    const linesToIgnore = [
+        'Check this box to trigger a request for Renovate to run again on this repository'
+    ];
     return list.children
         .map(child => {
         const paragraph = findCheckboxParent(child);
         return paragraph ? getTextContent(paragraph) : '';
     })
-        .map(s => s.replace(/^\[ \] /, ''))
+        .map(s => s.replace(/^\[ \] /, '').trim())
+        .filter(s => !linesToIgnore.includes(s))
         .filter(Boolean);
 }
 function parseIssue(root) {
@@ -32138,7 +32142,15 @@ async function getApprovers(pull) {
 async function getPullStats() {
     const prs = await getPRs();
     const stats = [];
+    const client = (0, client_1.default)();
+    const { owner, repo } = github.context.repo;
     for (const pr of prs) {
+        const details = await client.pulls.get({
+            owner,
+            repo,
+            pull_number: pr.number
+        });
+        const mergedBy = details.data.merged_by?.login ?? null;
         const approvers = await getApprovers(pr);
         const createdAt = new Date(pr.created_at);
         const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
@@ -32149,6 +32161,7 @@ async function getPullStats() {
             approvers,
             createdAt,
             mergedAt,
+            mergedBy,
             openFor,
             isOpen: pr.state === 'open',
             isMerged: pr.merged_at !== null

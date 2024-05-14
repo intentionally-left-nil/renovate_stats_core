@@ -10,6 +10,7 @@ export type PullStat = {
   id: number;
   title: string;
   approvers: string[];
+  mergedBy: string | null;
   createdAt: Date;
   mergedAt: Date | null;
   openFor: number;
@@ -60,7 +61,15 @@ async function getApprovers(pull: PullRequest): Promise<string[]> {
 export default async function getPullStats(): Promise<PullStat[]> {
   const prs = await getPRs();
   const stats: PullStat[] = [];
+  const client = getClient();
+  const { owner, repo } = github.context.repo;
   for (const pr of prs) {
+    const details = await client.pulls.get({
+      owner,
+      repo,
+      pull_number: pr.number
+    });
+    const mergedBy = details.data.merged_by?.login ?? null;
     const approvers = await getApprovers(pr);
     const createdAt = new Date(pr.created_at);
     const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
@@ -71,6 +80,7 @@ export default async function getPullStats(): Promise<PullStat[]> {
       approvers,
       createdAt,
       mergedAt,
+      mergedBy,
       openFor,
       isOpen: pr.state === 'open',
       isMerged: pr.merged_at !== null
