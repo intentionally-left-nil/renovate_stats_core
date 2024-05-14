@@ -31833,7 +31833,7 @@ function wrappy (fn, cb) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getIssueStats = exports.getReviewerStats = exports.getPackageStats = void 0;
+exports.getTimelineStats = exports.getIssueStats = exports.getReviewerStats = exports.getPackageStats = void 0;
 function getReviewerStats(prs) {
     const stats = {};
     const initialize = (key) => {
@@ -31946,6 +31946,41 @@ function getIssueStats(sections) {
     return stats;
 }
 exports.getIssueStats = getIssueStats;
+// https://stackoverflow.com/a/4156516/3029173
+function getMonday(d) {
+    d = new Date(d);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    return new Date(d.setDate(diff));
+}
+function getTimelineStats(prs) {
+    const weeks = new Map();
+    const initialize = (key) => {
+        if (!weeks.has(key)) {
+            weeks.set(key, {
+                week: new Date(key),
+                totalPRsOpened: 0,
+                totalPRsMerged: 0
+            });
+        }
+    };
+    for (const pr of prs) {
+        const openedWeek = getMonday(pr.createdAt).getTime();
+        initialize(openedWeek);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        weeks.get(openedWeek).totalPRsOpened++;
+        if (pr.mergedAt) {
+            const mergedWeek = getMonday(pr.mergedAt).getTime();
+            initialize(mergedWeek);
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            weeks.get(mergedWeek).totalPRsMerged++;
+        }
+    }
+    const timeline = Array.from(weeks.values());
+    timeline.sort((a, b) => a.week.getTime() - b.week.getTime());
+    return timeline;
+}
+exports.getTimelineStats = getTimelineStats;
 
 
 /***/ }),
@@ -32187,15 +32222,15 @@ async function run() {
         const packageStats = (0, aggregate_stats_1.getPackageStats)(prs);
         const reviewerStats = (0, aggregate_stats_1.getReviewerStats)(prs);
         const aggregateIssueStats = issueStats ? (0, aggregate_stats_1.getIssueStats)(issueStats) : null;
+        const timelineStats = (0, aggregate_stats_1.getTimelineStats)(prs);
         core.info('Setting outputs...');
         core.setOutput('packages', JSON.stringify(packageStats));
         core.setOutput('reviewers', JSON.stringify(reviewerStats));
         core.setOutput('status', JSON.stringify(aggregateIssueStats));
+        core.setOutput('timeline', JSON.stringify(timelineStats));
         core.setOutput('raw', JSON.stringify({
             prs,
-            packages: packageStats,
-            reviewers: reviewerStats,
-            status: aggregateIssueStats
+            issues: issueStats
         }));
         core.info('Finished!');
     }
@@ -32253,12 +32288,17 @@ async function getPRs() {
     }
     const client = (0, client_1.default)();
     const { owner, repo } = github.context.repo;
-    let pulls = await client.paginate(client.pulls.list, {
+    let pulls = [];
+    for await (const response of client.paginate.iterator(client.pulls.list, {
         owner,
         repo,
-        state: 'all',
-        base: 'main'
-    });
+        base: 'main',
+        per_page: 100,
+        state: 'all'
+    })) {
+        core.info(`Loaded PRs ${pulls.length + 1}-${pulls.length + response.data.length}...`);
+        pulls.concat(response.data);
+    }
     pulls = pulls.filter(pull => pull.labels.some(label => label.name === 'renovate'));
     if (createdAfter) {
         pulls = pulls.filter(pull => new Date(pull.created_at) > createdAfter);

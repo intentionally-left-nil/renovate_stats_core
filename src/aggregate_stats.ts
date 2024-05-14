@@ -33,6 +33,12 @@ interface IssueStats {
   ignored: number;
 }
 
+interface TimelineStats {
+  week: Date;
+  totalPRsOpened: number;
+  totalPRsMerged: number;
+}
+
 function getReviewerStats(prs: PullStat[]): { [key: string]: ReviewerStats } {
   const stats: { [key: string]: ReviewerStats } = {};
 
@@ -153,4 +159,41 @@ function getIssueStats(sections: Sections): IssueStats {
   return stats;
 }
 
-export { getPackageStats, getReviewerStats, getIssueStats };
+// https://stackoverflow.com/a/4156516/3029173
+function getMonday(d: Date): Date {
+  d = new Date(d);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  return new Date(d.setDate(diff));
+}
+
+function getTimelineStats(prs: PullStat[]): TimelineStats[] {
+  const weeks = new Map<number, TimelineStats>();
+  const initialize = (key: number): void => {
+    if (!weeks.has(key)) {
+      weeks.set(key, {
+        week: new Date(key),
+        totalPRsOpened: 0,
+        totalPRsMerged: 0
+      });
+    }
+  };
+  for (const pr of prs) {
+    const openedWeek = getMonday(pr.createdAt).getTime();
+    initialize(openedWeek);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    weeks.get(openedWeek)!.totalPRsOpened++;
+
+    if (pr.mergedAt) {
+      const mergedWeek = getMonday(pr.mergedAt).getTime();
+      initialize(mergedWeek);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      weeks.get(mergedWeek)!.totalPRsMerged++;
+    }
+  }
+  const timeline = Array.from(weeks.values());
+  timeline.sort((a, b) => a.week.getTime() - b.week.getTime());
+  return timeline;
+}
+
+export { getPackageStats, getReviewerStats, getIssueStats, getTimelineStats };

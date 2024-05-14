@@ -4,7 +4,8 @@ import getIssueTrackerStats from './issue_tracker';
 import {
   getPackageStats,
   getReviewerStats,
-  getIssueStats
+  getIssueStats,
+  getTimelineStats
 } from './aggregate_stats';
 export async function run(): Promise<void> {
   try {
@@ -16,17 +17,17 @@ export async function run(): Promise<void> {
     const packageStats = getPackageStats(prs);
     const reviewerStats = getReviewerStats(prs);
     const aggregateIssueStats = issueStats ? getIssueStats(issueStats) : null;
+    const timelineStats = getTimelineStats(prs);
     core.info('Setting outputs...');
     core.setOutput('packages', JSON.stringify(packageStats));
     core.setOutput('reviewers', JSON.stringify(reviewerStats));
     core.setOutput('status', JSON.stringify(aggregateIssueStats));
+    core.setOutput('timeline', JSON.stringify(timelineStats));
     core.setOutput(
       'raw',
       JSON.stringify({
         prs,
-        packages: packageStats,
-        reviewers: reviewerStats,
-        status: aggregateIssueStats
+        issues: issueStats
       })
     );
     core.info('Finished!');

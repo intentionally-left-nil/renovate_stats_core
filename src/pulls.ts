@@ -27,12 +27,19 @@ async function getPRs(): Promise<PullRequests> {
 
   const client = getClient();
   const { owner, repo } = github.context.repo;
-  let pulls = await client.paginate(client.pulls.list, {
+  let pulls: PullRequests = [];
+  for await (const response of client.paginate.iterator(client.pulls.list, {
     owner,
     repo,
-    state: 'all',
-    base: 'main'
-  });
+    base: 'main',
+    per_page: 100,
+    state: 'all'
+  })) {
+    core.info(
+      `Loaded PRs ${pulls.length + 1}-${pulls.length + response.data.length}...`
+    );
+    pulls.concat(response.data);
+  }
   pulls = pulls.filter(pull =>
     pull.labels.some(label => label.name === 'renovate')
   );

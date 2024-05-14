@@ -28,6 +28,8 @@ outputs:
   status:
     description:
       Point-in-time aggregate status for number of PR's open, blocked, etc.
+  timeline:
+    description: A week-by-week aggregate of PR's opened and closed
   raw:
     description:
       'All the data collected by the action, useful for performing your own
