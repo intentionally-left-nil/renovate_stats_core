@@ -85,7 +85,7 @@ function getReviewerStats(prs: PullStat[]): { [key: string]: ReviewerStats } {
   return stats;
 }
 
-const titleRe = /([^\s]+)\b to ([^\s]+)\b/i;
+const titleRe = /\s([^\s]+) to ([^\s]+)\b/i;
 function parseTitle(title: string): { name: string; version: string } {
   const match = titleRe.exec(title);
   const name = match ? match[1] : title;
@@ -148,7 +148,11 @@ function getIssueStats(sections: Sections): IssueStats {
   for (const key of Object.keys(sections)) {
     const titles = sections[key as keyof Sections];
     for (const title of titles) {
-      const { name } = parseTitle(title);
+      let { name } = parseTitle(title);
+      const firstSlash = name.indexOf('/');
+      if (firstSlash !== -1) {
+        name = name.slice(firstSlash + 1);
+      }
       uniquePackages.add(name);
       stats.totalPackages++;
     }

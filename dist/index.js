@@ -31887,7 +31887,7 @@ function getReviewerStats(prs) {
     return stats;
 }
 exports.getReviewerStats = getReviewerStats;
-const titleRe = /([^\s]+)\b to ([^\s]+)\b/i;
+const titleRe = /\s([^\s]+) to ([^\s]+)\b/i;
 function parseTitle(title) {
     const match = titleRe.exec(title);
     const name = match ? match[1] : title;
@@ -31945,7 +31945,11 @@ function getIssueStats(sections) {
     for (const key of Object.keys(sections)) {
         const titles = sections[key];
         for (const title of titles) {
-            const { name } = parseTitle(title);
+            let { name } = parseTitle(title);
+            const firstSlash = name.indexOf('/');
+            if (firstSlash !== -1) {
+                name = name.slice(firstSlash + 1);
+            }
             uniquePackages.add(name);
             stats.totalPackages++;
         }
