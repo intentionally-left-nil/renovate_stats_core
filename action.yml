@@ -19,8 +19,19 @@ inputs:
 
 # Define your outputs here.
 outputs:
-  all:
-    description: 'All the raw data, useful for performing your own analysis'
+  packages:
+    description: Dictionary of aggregate stats for every package
+  reviewers:
+    description:
+      Dictionary of aggregate stats for all the PR's interacted with by each
+      person
+  status:
+    description:
+      Point-in-time aggregate status for number of PR's open, blocked, etc.
+  raw:
+    description:
+      'All the data collected by the action, useful for performing your own
+      analysis'
 
 runs:
   using: node20

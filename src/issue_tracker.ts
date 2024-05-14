@@ -23,7 +23,7 @@ async function getRenovateIssue(): Promise<Issue | undefined> {
   return issue;
 }
 
-interface Sections {
+export interface Sections {
   'Rate-Limited': string[];
   'Edited/Blocked': string[];
   Open: string[];
@@ -117,13 +117,13 @@ async function markdownToJson(markdown: string): Promise<Root> {
   return parsed;
 }
 
-export default async function getIssueTrackerStats(): Promise<unknown> {
+export default async function getIssueTrackerStats(): Promise<Sections | null> {
   const issue = await getRenovateIssue();
   if (issue && issue.body) {
     const markdown = await markdownToJson(issue.body);
     const sections = parseIssue(markdown);
     return sections;
   } else {
-    return { error: 'No Renovate issue found' };
+    return null;
   }
 }

@@ -31827,6 +31827,129 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
+/***/ 4869:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getIssueStats = exports.getReviewerStats = exports.getPackageStats = void 0;
+function getReviewerStats(prs) {
+    const stats = {};
+    const initialize = (key) => {
+        if (!stats[key]) {
+            stats[key] = {
+                approved: 0,
+                approvedThenMerged: 0,
+                mergedByMe: 0,
+                uniquePRs: 0,
+                totalTimeOpen: 0,
+                timeOpenPerPR: 0
+            };
+        }
+    };
+    for (const pr of prs) {
+        for (const approver of pr.approvers) {
+            initialize(approver);
+            stats[approver].uniquePRs++;
+            stats[approver].approved++;
+            stats[approver].totalTimeOpen += pr.openFor;
+            if (pr.isMerged) {
+                stats[approver].approvedThenMerged++;
+            }
+        }
+        if (pr.mergedBy) {
+            initialize(pr.mergedBy);
+            stats[pr.mergedBy].mergedByMe++;
+            if (!pr.approvers.includes(pr.mergedBy)) {
+                stats[pr.mergedBy].uniquePRs++;
+                stats[pr.mergedBy].totalTimeOpen += pr.openFor;
+            }
+        }
+    }
+    for (const key of Object.keys(stats)) {
+        if (stats[key].uniquePRs > 0) {
+            stats[key].timeOpenPerPR =
+                stats[key].totalTimeOpen / stats[key].uniquePRs;
+        }
+    }
+    return stats;
+}
+exports.getReviewerStats = getReviewerStats;
+const titleRe = /([^\s]+)\b to ([^\s]+)\b/i;
+function parseTitle(title) {
+    const match = titleRe.exec(title);
+    const name = match ? match[1] : title;
+    const version = match ? match[2] : 'unknown';
+    return { name, version };
+}
+function getPackageStats(prs) {
+    const stats = {};
+    const initialize = (key) => {
+        if (!stats[key]) {
+            stats[key] = {
+                totalPRsOpen: 0,
+                totalPRsMerged: 0,
+                totalTimeOpen: 0,
+                timeOpenPerPR: 0,
+                versions: []
+            };
+        }
+    };
+    for (const pr of prs) {
+        const { name, version } = parseTitle(pr.title);
+        initialize(name);
+        stats[name].totalPRsOpen++;
+        stats[name].totalTimeOpen += pr.openFor;
+        if (pr.isMerged) {
+            stats[name].totalPRsMerged++;
+        }
+        stats[name].versions.push({
+            version,
+            createdAt: pr.createdAt,
+            mergedAt: pr.mergedAt
+        });
+    }
+    for (const key of Object.keys(stats)) {
+        if (stats[key].totalPRsOpen > 0) {
+            stats[key].timeOpenPerPR =
+                stats[key].totalTimeOpen / stats[key].totalPRsOpen;
+        }
+        stats[key].versions.sort((a, b) => (a.mergedAt ?? a.createdAt).getTime() -
+            (b.mergedAt ?? b.createdAt).getTime());
+    }
+    return stats;
+}
+exports.getPackageStats = getPackageStats;
+function getIssueStats(sections) {
+    const stats = {
+        date: new Date(),
+        totalPackages: 0,
+        uniquePackages: 0,
+        rateLimited: 0,
+        open: 0,
+        ignored: 0
+    };
+    const uniquePackages = new Set();
+    for (const key of Object.keys(sections)) {
+        const titles = sections[key];
+        for (const title of titles) {
+            const { name } = parseTitle(title);
+            uniquePackages.add(name);
+            stats.totalPackages++;
+        }
+    }
+    stats.uniquePackages = uniquePackages.size;
+    stats.rateLimited = sections['Rate-Limited'].length;
+    stats.open = sections.Open.length;
+    stats.ignored = sections['Ignored or Blocked'].length;
+    return stats;
+}
+exports.getIssueStats = getIssueStats;
+
+
+/***/ }),
+
 /***/ 4970:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -32009,7 +32132,7 @@ async function getIssueTrackerStats() {
         return sections;
     }
     else {
-        return { error: 'No Renovate issue found' };
+        return null;
     }
 }
 exports["default"] = getIssueTrackerStats;
@@ -32053,11 +32176,23 @@ exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const pulls_1 = __importDefault(__nccwpck_require__(6538));
 const issue_tracker_1 = __importDefault(__nccwpck_require__(2150));
+const aggregate_stats_1 = __nccwpck_require__(4869);
 async function run() {
     try {
         const prs = await (0, pulls_1.default)();
         const issueStats = await (0, issue_tracker_1.default)();
-        core.setOutput('all', JSON.stringify({ prs, issueStats }));
+        const packageStats = (0, aggregate_stats_1.getPackageStats)(prs);
+        const reviewerStats = (0, aggregate_stats_1.getReviewerStats)(prs);
+        const aggregateIssueStats = issueStats ? (0, aggregate_stats_1.getIssueStats)(issueStats) : null;
+        core.setOutput('packages', JSON.stringify(packageStats));
+        core.setOutput('reviewers', JSON.stringify(reviewerStats));
+        core.setOutput('status', JSON.stringify(aggregateIssueStats));
+        core.setOutput('raw', JSON.stringify({
+            prs,
+            packages: packageStats,
+            reviewers: reviewerStats,
+            status: aggregateIssueStats
+        }));
     }
     catch (error) {
         // Fail the workflow run if an error occurs
