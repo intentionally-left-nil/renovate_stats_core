@@ -31922,7 +31922,76 @@ async function getRenovateIssue() {
     }
     return issue;
 }
-async function parseRenovateIssue(markdown) {
+function findCheckboxParent(node) {
+    if (node.type === 'paragraph' &&
+        node.children.length &&
+        node.children[0].type === 'text' &&
+        node.children[0].value.startsWith('[ ]')) {
+        return node;
+    }
+    switch (node.type) {
+        case 'paragraph':
+        case 'blockquote':
+        case 'heading':
+        case 'link':
+        case 'listItem':
+            for (const child of node.children) {
+                const match = findCheckboxParent(child);
+                if (match) {
+                    return match;
+                }
+            }
+    }
+    return null;
+}
+function getTextContent(node) {
+    switch (node.type) {
+        case 'text':
+            return node.value;
+        case 'link':
+        case 'paragraph':
+        case 'blockquote':
+        case 'list':
+        case 'listItem':
+        case 'heading':
+            return node.children.map(getTextContent).join(' ');
+        default:
+            return '';
+    }
+}
+function getListItems(list) {
+    return list.children
+        .map(child => {
+        const paragraph = findCheckboxParent(child);
+        return paragraph ? getTextContent(paragraph) : '';
+    })
+        .map(s => s.replace(/^\[ \] /, ''))
+        .filter(Boolean);
+}
+function parseIssue(root) {
+    const sections = {
+        'Rate-Limited': [],
+        'Edited/Blocked': [],
+        Open: [],
+        'Ignored or Blocked': []
+    };
+    let sectionName = null;
+    for (const node of root.children) {
+        if (node.type === 'heading') {
+            if (node.children.length === 1 &&
+                node.children[0].type === 'text' &&
+                node.children[0] &&
+                Object.keys(sections).includes(node.children[0].value)) {
+                sectionName = node.children[0].value;
+            }
+        }
+        else if (node.type === 'list' && sectionName) {
+            sections[sectionName] = getListItems(node);
+        }
+    }
+    return sections;
+}
+async function markdownToJson(markdown) {
     const { remark } = await Promise.all(/* import() */[__nccwpck_require__.e(547), __nccwpck_require__.e(593)]).then(__nccwpck_require__.bind(__nccwpck_require__, 5593));
     const { default: remarkParse } = await Promise.all(/* import() */[__nccwpck_require__.e(547), __nccwpck_require__.e(274)]).then(__nccwpck_require__.bind(__nccwpck_require__, 1274));
     const parsed = remark().use(remarkParse).parse(markdown);
@@ -31931,7 +32000,9 @@ async function parseRenovateIssue(markdown) {
 async function getIssueTrackerStats() {
     const issue = await getRenovateIssue();
     if (issue && issue.body) {
-        return await parseRenovateIssue(issue.body);
+        const markdown = await markdownToJson(issue.body);
+        const sections = parseIssue(markdown);
+        return sections;
     }
     else {
         return { error: 'No Renovate issue found' };
