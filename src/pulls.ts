@@ -70,6 +70,7 @@ export default async function getPullStats(): Promise<PullStat[]> {
   const stats: PullStat[] = [];
   const client = getClient();
   const { owner, repo } = github.context.repo;
+  let i = 0;
   for (const pr of prs) {
     const details = await client.pulls.get({
       owner,
@@ -77,6 +78,9 @@ export default async function getPullStats(): Promise<PullStat[]> {
       pull_number: pr.number
     });
     const mergedBy = details.data.merged_by?.login ?? null;
+    if (i % 100 === 0) {
+      core.info(`Processing PRs ${i + 1} / ${prs.length}...`);
+    }
     const approvers = await getApprovers(pr);
     const createdAt = new Date(pr.created_at);
     const mergedAt = pr.merged_at ? new Date(pr.merged_at) : null;
@@ -92,6 +96,7 @@ export default async function getPullStats(): Promise<PullStat[]> {
       isOpen: pr.state === 'open',
       isMerged: pr.merged_at !== null
     });
+    i++;
   }
   return stats;
 }
