@@ -32179,11 +32179,15 @@ const issue_tracker_1 = __importDefault(__nccwpck_require__(2150));
 const aggregate_stats_1 = __nccwpck_require__(4869);
 async function run() {
     try {
+        core.info('Gathering information from all the Renovate PRs...');
         const prs = await (0, pulls_1.default)();
+        core.info('Gathering information from the Renovate Issue tracker...');
         const issueStats = await (0, issue_tracker_1.default)();
+        core.info('Calculating all the statistics...');
         const packageStats = (0, aggregate_stats_1.getPackageStats)(prs);
         const reviewerStats = (0, aggregate_stats_1.getReviewerStats)(prs);
         const aggregateIssueStats = issueStats ? (0, aggregate_stats_1.getIssueStats)(issueStats) : null;
+        core.info('Setting outputs...');
         core.setOutput('packages', JSON.stringify(packageStats));
         core.setOutput('reviewers', JSON.stringify(reviewerStats));
         core.setOutput('status', JSON.stringify(aggregateIssueStats));
@@ -32193,6 +32197,7 @@ async function run() {
             reviewers: reviewerStats,
             status: aggregateIssueStats
         }));
+        core.info('Finished!');
     }
     catch (error) {
         // Fail the workflow run if an error occurs
