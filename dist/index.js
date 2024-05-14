@@ -32297,7 +32297,7 @@ async function getPRs() {
         state: 'all'
     })) {
         core.info(`Loaded PRs ${pulls.length + 1}-${pulls.length + response.data.length}...`);
-        pulls.concat(response.data);
+        pulls = pulls.concat(response.data);
     }
     pulls = pulls.filter(pull => pull.labels.some(label => label.name === 'renovate'));
     if (createdAfter) {
